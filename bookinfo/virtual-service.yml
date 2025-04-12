@@ -1,0 +1,38 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: bookinfo-virtual-service
+  namespace: istio-system
+spec:
+  hosts:
+    - "bookinfo.example.com"
+  gateways:
+    - http-gateway
+    - https-gateway
+  http:
+    - match:
+        - uri:
+            exact: /productpage
+        - uri:
+            prefix: /static
+        - uri:
+            prefix: /metrics
+        - uri:
+            exact: /login
+        - uri:
+            exact: /logout
+        - uri:
+            prefix: /api/v1/products
+      route:
+        - destination:
+            host: productpage.bookinfo-dev.svc.cluster.local
+            port:
+              number: 9080
+    - match:
+        - uri:
+            prefix: /ratings
+      route:
+        - destination:
+            host: ratings.bookinfo-dev.svc.cluster.local
+            port:
+              number: 9080

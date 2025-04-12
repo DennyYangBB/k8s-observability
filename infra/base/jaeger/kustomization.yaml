@@ -1,0 +1,16 @@
+labels:
+  - includeSelectors: false
+    includeTemplates: true
+    pairs:
+      app.kubernetes.io/component: observability
+      app.kubernetes.io/name: jaeger
+      app.kubernetes.io/instance: jaeger
+      app.kubernetes.io/version: "1.67.0"
+# https://www.jaegertracing.io/
+
+resources:
+  - service-account.yaml
+  - deployment.yaml
+  - service-jaeger.yaml
+  - service-zipkin.yaml
+  - service-collector.yaml

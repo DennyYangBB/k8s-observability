@@ -1,0 +1,13 @@
+labels:
+  - includeSelectors: false
+    includeTemplates: true
+    pairs:
+      app.kubernetes.io/component: exporter
+      app.kubernetes.io/name: cadvisor
+      app.kubernetes.io/instance: cadvisor
+      app.kubernetes.io/version: v0.45.0
+# https://www.kubecost.com/kubernetes-devops-tools/cadvisor/
+
+resources:
+  - ./service-account.yaml
+  - ./daemonset.yaml

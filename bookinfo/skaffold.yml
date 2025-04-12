@@ -1,0 +1,16 @@
+apiVersion: skaffold/v4beta7
+kind: Config
+metadata:
+  name: bookinfo
+
+manifests:
+  kustomize:
+    paths:
+      - ./overlay/dev
+
+profiles:
+  - name: dev
+    manifests:
+      kustomize:
+        paths:
+          - ./overlay/dev

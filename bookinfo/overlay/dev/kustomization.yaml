@@ -1,0 +1,15 @@
+namespace: bookinfo-dev
+labels:
+  - includeSelectors: false
+    includeTemplates: true
+    pairs:
+      app.kubernetes.io/environment: dev
+      app.kubernetes.io/part-of: bookinfo
+      app.kubernetes.io/version: "1.20.2"
+
+resources:
+  - namespace.yaml
+  - ../../base/details/
+  - ../../base/productpage/
+  - ../../base/ratings/
+  - ../../base/reviews/

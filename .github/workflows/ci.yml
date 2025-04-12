@@ -1,0 +1,99 @@
+name: Lint Kubernetes Manifests
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'bookinfo/**.yaml'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'infra/**.yaml'
+  schedule:
+    - cron: '44 11 * * 0'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: "staging"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.24.0'  # 你可以選擇版本
+
+      - name: Install Skaffold
+        run: |
+          curl -Lo skaffold https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64 && sudo install skaffold /usr/local/bin/ && rm skaffold
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash && mv kustomize /usr/local/bin
+
+      - name: Set up k3d cluster
+        run: |
+          curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+          k3d cluster create observability-cluster
+
+      - name: Install istioctl
+        run: |
+          curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.25.0 TARGET_ARCH=x86_64 sh -
+          cp istio*/bin/istioctl /usr/local/bin
+          rm istio* -r
+
+      - name: Install Istio
+        run: |
+          kubectl create ns istio-system
+          istioctl install --set meshConfig.accessLogFile=/dev/stdout -y
+
+      - name: Apply Gateway
+        run: |
+          kubectl apply -f gateway.yml
+
+      - name: Run Skaffold to build and deploy infra
+        run: |
+          cd infra
+          skaffold run
+
+      - name: Run Skaffold to build and deploy bookinfo
+        run: |
+          cd bookinfo
+          skaffold run
+
+      - name: Apply VirtualService
+        run: |
+          kubectl apply -f ./infra/virtual-service.yml
+          kubectl apply -f ./bookinfo/virtual-service.yml
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods --all-namespaces
+          kubectl get services --all-namespaces
+
+      - name: Start kubectl proxy in background
+        run: |
+          kubectl proxy &
+          sleep 5
+
+      - name: Verify bookinfo
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/api/v1/namespaces/bookinfo-dev/services/http:ratings:9080/proxy/ratings/7)
+          echo "Status: $status"
+          if [ "$status" -ne 200 ]; then
+            echo "bookinfo-ratings Health check failed!"
+            exit 1
+          fi
+
+      - name: Verify kiali
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/api/v1/namespaces/istio-system/services/http:kiali:20001/proxy/kiali)
+          echo "Status: $status"
+          if [ "$status" -ne 200 ]; then
+            echo "bookinfo-ratings Health check failed!"
+            exit 1
+          fi
+
+      - name: Clean up
+        run: |
+          k3d cluster delete
